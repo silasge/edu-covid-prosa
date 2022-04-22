@@ -1,0 +1,164 @@
+---
+title: "Análise 14/03"
+author: "Silas Genário"
+date: "10/03/2022"
+output: html_document
+---
+
+``` {r message=FALSE}
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(stringr)
+library(tidyr)
+library(purrr)
+library(jtools)
+library(hrbrthemes)
+```
+
+## Lendo os dados
+
+``` {r message=FALSE}
+base_prosa <- read_csv("../../data/processed/prosa/base_prosa_coelba_inep.csv") %>%
+  filter(id_etapa %in% c(5, 9)) %>%
+  mutate(
+    edicao = glue::glue("{nu_ano}-{nu_avaliacao}"),
+    nm_regional = nm_regional %>%
+           str_replace("CIDADE BAIXA", "LIBERDADE"),
+    porte_escola = porte_escola %>%
+      str_replace_all("matrículas de escolarização", "") %>%
+      str_trim()
+  ) %>%
+  select(
+    edicao,
+    nm_regional,
+    id_escola,
+    id_etapa,
+    nm_disciplina,
+    nu_alunos,
+    tx_respondentes,
+    vl_nota_media,
+    atu:icg,
+    ied:tdi,
+    nm_localizacao,
+    porte_escola,
+    kwh_comercial, 
+    kwh_industrial, 
+    kwh_residencial, 
+    kwh_resultado
+  )
+```
+
+## Estatísticas Descritivas
+
+
+### Número de Alunos
+
+``` {r}
+ggplot(data = base_prosa %>% filter(id_etapa == 5,
+                                    nm_disciplina == "MATEMÁTICA"),
+       aes(x = nu_alunos, y = vl_nota_media)) +
+  geom_point() +
+  facet_wrap(~ edicao, scales = "free") +
+  geom_smooth(method = "lm")
+```
+
+
+### Taxa de Respondentes
+
+``` {r}
+ggplot(data = base_prosa %>% filter(id_etapa == 5,
+                                    nm_disciplina == "MATEMÁTICA"),
+       aes(x = tx_respondentes, y = vl_nota_media)) +
+  geom_point() +
+  facet_wrap(~ edicao, scales = "free") +
+  geom_smooth(method = "lm")
+```
+
+``` {r}
+ggplot(data = base_prosa %>% filter(id_etapa == 5,
+                                    nm_disciplina == "MATEMÁTICA"),
+       aes(x = nm_localizacao, y = vl_nota_media)) +
+  geom_point() +
+  stat_summary(fun = mean, geom = "point", size = 5) +
+  facet_wrap(~ edicao, scales = "free") +
+  geom_smooth(method = "lm")
+```
+
+``` {r}
+ggplot(data = base_prosa %>% filter(id_etapa == 5,
+                                    nm_disciplina == "MATEMÁTICA"),
+       aes(x = porte_escola, y = vl_nota_media)) +
+  geom_point() +
+  coord_flip() +
+  stat_summary(fun = mean, geom = "point", size = 5) +
+  facet_wrap(~ edicao, scales = "free") +
+  geom_smooth(method = "lm")
+```
+
+
+``` {r}
+estimacoes <- base_prosa %>%
+  group_by(edicao, id_etapa, nm_disciplina) %>%
+  mutate(
+    across(c(vl_nota_media, contains("kwh")), ~ (.x - mean(.x, na.rm = TRUE)) / sd(.x, na.rm = TRUE))) %>%
+  nest() %>%
+  mutate(
+    residencial = map(
+      data,
+      ~ lm(vl_nota_media ~ nu_alunos + tx_respondentes + atu + dsu + had + factor(icg) + ied + ird + tdi + factor(porte_escola) + kwh_residencial, data = .x)),
+    comercial = map(
+      data,
+       ~ lm(vl_nota_media ~ nu_alunos + tx_respondentes + atu + dsu + had + factor(icg) + ied + ird + tdi + factor(porte_escola) + kwh_comercial, data = .x)),
+    total = map(
+      data,
+       ~ lm(vl_nota_media ~ nu_alunos + tx_respondentes + atu + dsu + had + factor(icg) + ied + ird + tdi + factor(porte_escola) + kwh_resultado, data = .x))
+  )
+```
+
+
+``` {r}
+
+obt_estimacoes <- function(estim_df, selecao, ...) {
+  obj_name <- deparse(substitute(selecao))
+  if (obj_name == "total") {
+    coef_nm <- "kwh_resultado"
+  } else if (obj_name == "comercial") {
+    coef_nm <- "kwh_comercial"
+  } else if (obj_name == "residencial") {
+    coef_nm <- "kwh_residencial"
+  }
+  
+  
+  estimacoes <- estim_df %>% 
+    filter(...) %>%
+    select(edicao, id_etapa, nm_disciplina, {{ selecao }}) %>%
+    arrange(edicao)
+  
+  disciplina <- unique(estimacoes$nm_disciplina) %>% str_to_title()
+  
+  etapa <- unique(estimacoes$id_etapa) %>% as.character()
+  
+  estimacoes <- estimacoes %>%
+      pluck(4)
+
+  
+  plot <- do.call(plot_coefs, args = c(estimacoes, list(model.names = c("2018-1", "2019-1", "2019-2", "2021-1"), coefs = c(coef_nm)))) +
+    theme_ipsum_rc(grid = "XY", 
+                 axis = "xy",
+                 plot_title_margin = 2,
+                 subtitle_margin = 5,
+                 plot_margin = margin(2, 0, 0, 0)) +
+    scale_color_ipsum() +
+    scale_fill_ipsum()
+}
+
+(estimacoes_5ano_mt <- obt_estimacoes(estimacoes, residencial, id_etapa == 5, nm_disciplina == "MATEMÁTICA"))
+
+
+```
+
+
+
+
+

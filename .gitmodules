@@ -1,0 +1,3 @@
+[submodule "edu-covid-data"]
+	path = edu-covid-data
+	url = git@github.com:silasge/edu-covid-data.git
