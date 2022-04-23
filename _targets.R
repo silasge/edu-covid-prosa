@@ -22,6 +22,7 @@ options(clustermq.scheduler = "multicore")
 
 # Load the R scripts with your custom functions:
 source("./R/indicadores_inep.R")
+source("./R/coelba.R")
 source("./R/utils.R")
 # source("other_functions.R") # Source other scripts as needed. # nolint
 
@@ -75,5 +76,9 @@ list(
   tar_target(ird, purrr::map_dfr(ird_paths, ~ get_ird(.x, id_municipio == 2927408))),
   tar_target(tdi, purrr::map_dfr(tdi_paths, ~ get_tdi(.x, id_municipio == 2927408))),
   tar_target(base_indicadores, create_base_indicadores(atu, had, icg, ideb, ied, ird, tdi)),
-  tar_target(export_indicadores_to_sql, export_to_sqlite("indicadores_inep", base_indicadores))
+  tar_target(export_indicadores_to_sql, export_to_sqlite("indicadores_inep", base_indicadores)),
+  tar_target(coelba_path, "./edu-covid-data/data/projeto_prosa/raw/coelba/Salvador_Cativo_2018 vs 2022.xlsx", format = "file"),
+  tar_target(pop_path, "./edu-covid-data/data/projeto_prosa/raw/bairros/populacao_bairros_salvador.xlsx", format = "file"),
+  tar_target(coelba, get_coelba(coelba_path, pop_path)),
+  tar_target(export_coelba_to_sql, export_to_sqlite("coelba", coelba))
 )
