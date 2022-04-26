@@ -23,6 +23,7 @@ options(clustermq.scheduler = "multicore")
 # Load the R scripts with your custom functions:
 source("./R/indicadores_inep.R")
 source("./R/coelba.R")
+source("./R/prosa.R")
 source("./R/utils.R")
 # source("other_functions.R") # Source other scripts as needed. # nolint
 
@@ -80,5 +81,16 @@ list(
   tar_target(coelba_path, "./edu-covid-data/data/projeto_prosa/raw/coelba/Salvador_Cativo_2018 vs 2022.xlsx", format = "file"),
   tar_target(pop_path, "./edu-covid-data/data/projeto_prosa/raw/bairros/populacao_bairros_salvador.xlsx", format = "file"),
   tar_target(coelba, get_coelba(coelba_path, pop_path)),
-  tar_target(export_coelba_to_sql, export_to_sqlite("coelba", coelba))
+  tar_target(export_coelba_to_sql, export_to_sqlite("coelba", coelba)),
+  tar_target(
+    prosa_files,
+    fs::dir_ls(
+      c("./edu-covid-data/data/projeto_prosa/raw/prosa/2017",
+        "./edu-covid-data/data/projeto_prosa/raw/prosa/2018",
+        "./edu-covid-data/data/projeto_prosa/raw/prosa/2019",
+        "./edu-covid-data/data/projeto_prosa/raw/prosa/2021")),
+    format = "file"
+  ),
+  tar_target(prosa, purrr::map_dfr(prosa_files, ~ get_prosa(.x))),
+  tar_target(export_prosa_to_sql, export_to_sqlite("prosa", prosa))
 )

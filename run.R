@@ -6,3 +6,11 @@
 targets::tar_make()
 # targets::tar_make_clustermq(workers = 2) # nolint
 # targets::tar_make_future(workers = 2) # nolint
+
+
+
+base <- readRDS("./_targets/objects/prosa")
+library(dplyr)
+
+base2 <- base %>%
+  group_by(NU_ANO, NU_ETAPA, )
