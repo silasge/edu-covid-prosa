@@ -55,6 +55,8 @@ list(
     format = "file"
   ),
   tar_target(
+    inse_path, "./edu-covid-data/data/projeto_prosa/raw/inep/inse/INSE_2019_ESCOLAS.xlsx" , format = "file"),
+  tar_target(
     ied_paths,
     fs::dir_ls(path = "./edu-covid-data/data/projeto_prosa/raw/inep/esforco_docente/", glob = "*.xlsx"), 
     format = "file"
@@ -73,10 +75,11 @@ list(
   tar_target(had, purrr::map_dfr(had_paths, ~ get_had(.x, id_municipio == 2927408))),
   tar_target(icg, purrr::map_dfr(icg_paths, ~ get_icg(.x, id_municipio == 2927408))),
   tar_target(ideb, purrr::map_dfr(ideb_paths, ~ get_ideb(.x, id_municipio == 2927408))),
+  tar_target(inse, get_inse(inse_path, id_municipio == 2927408)),
   tar_target(ied, purrr::map_dfr(ied_paths, ~ get_ied(.x, id_municipio == 2927408, nu_cat_ied == 6))),
   tar_target(ird, purrr::map_dfr(ird_paths, ~ get_ird(.x, id_municipio == 2927408))),
   tar_target(tdi, purrr::map_dfr(tdi_paths, ~ get_tdi(.x, id_municipio == 2927408))),
-  tar_target(base_indicadores, create_base_indicadores(atu, had, icg, ideb, ied, ird, tdi)),
+  tar_target(base_indicadores, create_base_indicadores(atu, had, icg, ideb, inse, ied, ird, tdi)),
   tar_target(export_indicadores_to_sql, export_to_sqlite("indicadores_inep", base_indicadores)),
   tar_target(coelba_path, "./edu-covid-data/data/projeto_prosa/raw/coelba/Salvador_Cativo_2018 vs 2022.xlsx", format = "file"),
   tar_target(pop_path, "./edu-covid-data/data/projeto_prosa/raw/bairros/populacao_bairros_salvador.xlsx", format = "file"),

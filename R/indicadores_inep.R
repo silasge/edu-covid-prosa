@@ -12,7 +12,7 @@ library(magrittr)
 }
 
 .clean_atu <- function(atu) {
-  ano <- atu %>% select(NU_ANO_CENSO) %$% unique(NU_ANO_CENSO)
+  ano <- atu %>% select(NU_ANO_CENSO) %>% distinct(NU_ANO_CENSO) %>% purrr::pluck(1, 1)
   if (ano == 2018) {
     atu <- atu %>%
       rename(
@@ -195,7 +195,8 @@ get_had <- function(path, ...) {
 }
 
 .clean_icg <- function(icg) {
-  ano <- icg %>% select(tidyselect::matches("NU_ANO_CENSO|Ano")) %>% unique() %>% purrr::pluck(1)
+  vars <- c("NU_ANO_CENSO", "Ano")
+  ano <- icg %>% select(any_of(vars)) %>% distinct() %>% purrr::pluck(1, 1)
   if (ano %in% c(2017, 2018)) {
     icg <- icg %>%
       rename(
@@ -273,6 +274,29 @@ get_icg <- function(path, ...) {
 get_ideb <- function(path, ...) {
   ideb <- .read_ideb(path) %>% .clean_ideb() %>% filter(...)
 }
+
+
+# ---- INSE - Nível Sócio Econômico ----
+
+.read_inse <- function(path) {
+  read_excel(path)
+}
+
+.clean_inse <- function(inse) {
+  inse %>%
+    mutate(nu_ano = 2019) %>%
+    select(
+      nu_ano,
+      id_municipio = CO_MUNICIPIO,
+      id_escola = CO_ESCOLA,
+      inse = INSE_VALOR_ABSOLUTO,
+    )
+}
+
+get_inse <- function(path, ...) {
+  inse <- .read_inse(path) %>% .clean_inse() %>% filter(...)
+}
+
 
 # --- IED - Índice de Esforço Docente ----
 
@@ -440,14 +464,14 @@ get_tdi <- function(path, ...) {
 
 # ---- Base de Indicadores ----
 
-create_base_indicadores <- function(atu, had, icg, ideb, ied, ird, tdi) {
+create_base_indicadores <- function(atu, had, icg, ideb, inse, ied, ird, tdi) {
   atu %>%
     #left_join(dsu %>% select(nu_ano, id_escola, nm_faixa_etapa)) %>%
     left_join(had %>% select(nu_ano, id_escola, id_etapa, nm_faixa_etapa, had)) %>%
     left_join(icg %>% select(nu_ano, id_escola, icg)) %>%
     left_join(ideb %>% select(nu_ano, id_escola, nm_faixa_etapa, ideb)) %>%
+    left_join(inse %>% select(nu_ano, id_escola, inse)) %>%
     left_join(ied %>% select(nu_ano, id_escola, nm_faixa_etapa, ied)) %>%
     left_join(ird %>% select(nu_ano, id_escola, ird)) %>%
     left_join(tdi %>% select(nu_ano, id_escola, id_etapa, nm_faixa_etapa, tdi))
 }
-
