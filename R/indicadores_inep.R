@@ -4,6 +4,54 @@ library(stringr)
 library(dplyr)
 library(magrittr)
 
+# ---- AFD - Adequação da Formação Docente ----
+
+.read_afd <- function(path) {
+  read_excel(path, skip = 10, na = "--")
+}
+
+.clean_afd <- function(afd) {
+  afd %>%
+    rename_with(
+      ~ case_when(
+        .x %in% c("Ano", "NU_ANO_CENSO") ~ "nu_ano",
+        .x %in% c("SIGLA", "SG_UF") ~ "sg_uf",
+        .x %in% c("PK_COD_MUNICIPIO", "CO_MUNICIPIO") ~ "id_municipio",
+        .x == "NO_MUNICIPIO" ~ "nm_municipio",
+        .x %in% c("PK_COD_ENTIDADE", "CO_ENTIDADE") ~ "id_escola",
+        .x == "NO_ENTIDADE" ~ "nm_escola",
+        .x %in% c("TIPOLOCA", "NO_CATEGORIA") ~ "nm_localizacao",
+        .x %in% c("Dependad", "NO_DEPENDENCIA") ~ "nm_dependencia",
+        .x %in% c("AFD_F141", "FUN_AI_CAT_1") ~ "afd_ai_grp1",	
+        .x %in% c("AFD_F142", "FUN_AI_CAT_2") ~ "afd_ai_grp2",
+        .x %in% c("AFD_F143", "FUN_AI_CAT_3") ~ "afd_ai_grp3",
+        .x %in% c("AFD_F144", "FUN_AI_CAT_4") ~ "afd_ai_grp4",
+        .x %in% c("AFD_F145", "FUN_AI_CAT_5") ~ "afd_ai_grp5",
+        .x %in% c("AFD_F581", "FUN_AF_CAT_1") ~ "afd_af_grp1",	
+        .x %in% c("AFD_F582", "FUN_AF_CAT_2") ~ "afd_af_grp2",
+        .x %in% c("AFD_F583", "FUN_AF_CAT_3") ~ "afd_af_grp3",
+        .x %in% c("AFD_F584", "FUN_AF_CAT_4") ~ "afd_af_grp4",
+        .x %in% c("AFD_F585", "FUN_AF_CAT_5") ~ "afd_af_grp5",
+        TRUE ~ .x
+      )
+    ) %>%
+    select(
+      nu_ano,
+      sg_uf,
+      id_municipio,
+      nm_municipio,
+      id_escola,
+      nm_escola,
+      nm_localizacao,
+      nm_dependencia,
+      starts_with("afd_", ignore.case = FALSE)
+    )
+}
+
+get_afd <- function(path, ...) {
+  afd <- .read_afd(path) %>% .clean_afd() %>% filter(...)
+}
+
 
 # ---- ATU - Alunos por Turma ----
 
@@ -316,24 +364,18 @@ get_inse <- function(path, ...) {
         .x == "NO_ENTIDADE" ~ "nm_escola",
         .x %in% c("TIPOLOCA", "NO_CATEGORIA") ~ "nm_localizacao",
         .x %in% c("Dependad", "NO_DEPENDENCIA") ~ "nm_dependencia",
-        .x == "IED_FUN1" ~ "FUN_CAT_1",	
-        .x == "IED_FUN2" ~ "FUN_CAT_2",
-        .x == "IED_FUN3" ~ "FUN_CAT_3",
-        .x == "IED_FUN4" ~ "FUN_CAT_4",
-        .x == "IED_FUN5" ~ "FUN_CAT_5",
-        .x == "IED_FUN6" ~ "FUN_CAT_6",
-        .x == "IED_F141" ~ "FUN_AI_CAT_1",	
-        .x == "IED_F142" ~ "FUN_AI_CAT_2",
-        .x == "IED_F143" ~ "FUN_AI_CAT_3",
-        .x == "IED_F144" ~ "FUN_AI_CAT_4",
-        .x == "IED_F145" ~ "FUN_AI_CAT_5",
-        .x == "IED_F146" ~ "FUN_AI_CAT_6",
-        .x == "IED_F581" ~ "FUN_AF_CAT_1",	
-        .x == "IED_F582" ~ "FUN_AF_CAT_2",
-        .x == "IED_F583" ~ "FUN_AF_CAT_3",
-        .x == "IED_F584" ~ "FUN_AF_CAT_4",
-        .x == "IED_F585" ~ "FUN_AF_CAT_5",
-        .x == "IED_F586" ~ "FUN_AF_CAT_6",
+        .x %in% c("IED_F141", "FUN_AI_CAT_1") ~ "ied_ai_nvl1",	
+        .x %in% c("IED_F142", "FUN_AI_CAT_2") ~ "ied_ai_nvl2",
+        .x %in% c("IED_F143", "FUN_AI_CAT_3") ~ "ied_ai_nvl3",
+        .x %in% c("IED_F144", "FUN_AI_CAT_4") ~ "ied_ai_nvl4",
+        .x %in% c("IED_F145", "FUN_AI_CAT_5") ~ "ied_ai_nvl5",
+        .x %in% c("IED_F146", "FUN_AI_CAT_6") ~ "ied_ai_nvl6",
+        .x %in% c("IED_F581", "FUN_AF_CAT_1") ~ "ied_af_nvl1",	
+        .x %in% c("IED_F582", "FUN_AF_CAT_2") ~ "ied_af_nvl2",
+        .x %in% c("IED_F583", "FUN_AF_CAT_3") ~ "ied_af_nvl3",
+        .x %in% c("IED_F584", "FUN_AF_CAT_4") ~ "ied_af_nvl4",
+        .x %in% c("IED_F585", "FUN_AF_CAT_5") ~ "ied_af_nvl5",
+        .x %in% c("IED_F586", "FUN_AF_CAT_6") ~ "ied_af_nvl6",
         TRUE ~ .x
       )
     ) %>%
@@ -346,24 +388,8 @@ get_inse <- function(path, ...) {
       nm_escola,
       nm_localizacao,
       nm_dependencia,
-      starts_with("FUN_")
-    ) %>%
-    pivot_longer(
-      FUN_CAT_1:FUN_AF_CAT_6,
-      names_to = "nm_faixa_etapa",
-      values_to = "ied"
-    ) %>%
-    mutate(
-      nu_cat_ied = nm_faixa_etapa %>%
-        str_extract("\\d") %>%
-        as.numeric(),
-      nm_faixa_etapa = case_when(
-        str_detect(nm_faixa_etapa, "AI") ~ "Anos Iniciais",
-        str_detect(nm_faixa_etapa, "AF") ~ "Anos Finais",
-        TRUE ~ "Total"
-      )
-    ) %>%
-    relocate(nu_cat_ied, .before = ied)
+      starts_with("ied_", ignore.case = FALSE)
+    )
 }
 
 get_ied <- function(path, ...) {
@@ -467,6 +493,7 @@ get_tdi <- function(path, ...) {
 create_base_indicadores <- function(atu, had, icg, ideb, inse, ied, ird, tdi) {
   atu %>%
     #left_join(dsu %>% select(nu_ano, id_escola, nm_faixa_etapa)) %>%
+    left_join(afd %>% select(nu_ano, id_escola, nm_faixa_etapa, afd)) %>%
     left_join(had %>% select(nu_ano, id_escola, id_etapa, nm_faixa_etapa, had)) %>%
     left_join(icg %>% select(nu_ano, id_escola, icg)) %>%
     left_join(ideb %>% select(nu_ano, id_escola, nm_faixa_etapa, ideb)) %>%

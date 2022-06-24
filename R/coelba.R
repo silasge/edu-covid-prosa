@@ -66,7 +66,7 @@ library(stringr)
         nm_bairro %in% c("SAO MARCOS - I") ~ "SAO MARCOS",
         nm_bairro %in% c("SUSSUARANA - I") ~ "SUSSUARANA",
         nm_bairro %in% c("VALERIA - I", "VALERIA - II") ~ "VALERIA",
-        nm_bairro %in% c("VILA RUI BARBOSA", "JARDIM CRUZEIRO") ~ "VILA RUY BARBOSA"
+        nm_bairro %in% c("VILA RUI BARBOSA", "JARDIM CRUZEIRO") ~ "VILA RUY BARBOSA",
         TRUE ~ nm_bairro), 
       nm_classe = nm_classe %>%
         stringi::stri_trans_general(id = "Latin-ASCII") %>% 
