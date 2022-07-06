@@ -60,7 +60,10 @@ get_afd <- function(path, ...) {
 }
 
 .clean_atu <- function(atu) {
-  ano <- atu %>% select(NU_ANO_CENSO) %>% distinct(NU_ANO_CENSO) %>% purrr::pluck(1, 1)
+  ano <- atu %>% select(NU_ANO_CENSO) %>% 
+    distinct() %>%
+    purrr::pluck(1, 1)
+
   if (ano == 2018) {
     atu <- atu %>%
       rename(
@@ -133,11 +136,11 @@ get_afd <- function(path, ...) {
       `9` = FUN_09_CAT_0
     ) %>%
     pivot_longer(cols = `1`:`9`,
-                 names_to = "id_etapa",
+                 names_to = "nu_etapa",
                  values_to = "atu") %>%
-    mutate(id_etapa = as.numeric(id_etapa),
-           nm_faixa_etapa = case_when(id_etapa %in% c(1, 2, 3, 4, 5) ~ "Anos Iniciais",
-                                      id_etapa %in% c(6, 7, 8, 9) ~ "Anos Finais"))
+    mutate(nu_etapa = as.numeric(nu_etapa),
+           nm_faixa_etapa = case_when(nu_etapa %in% c(1, 2, 3, 4, 5) ~ "Anos Iniciais",
+                                      nu_etapa %in% c(6, 7, 8, 9) ~ "Anos Finais"))
   
 }
 
@@ -225,11 +228,11 @@ get_dsu <- function(path, ...) {
       starts_with("FUN_0")
     ) %>%
     pivot_longer(FUN_01_CAT_0:FUN_09_CAT_0, 
-                        names_to = "id_etapa",
+                        names_to = "nu_etapa",
                         values_to = "had") %>%
-    mutate(id_etapa = id_etapa %>% str_extract("\\d\\d") %>% as.numeric(),
-           nm_faixa_etapa = case_when(id_etapa %in% c(1, 2, 3, 4, 5) ~ "Anos Iniciais",
-                                      id_etapa %in% c(6, 7, 8, 9) ~ "Anos Finais"))
+    mutate(nu_etapa = nu_etapa %>% str_extract("\\d\\d") %>% as.numeric(),
+           nm_faixa_etapa = case_when(nu_etapa %in% c(1, 2, 3, 4, 5) ~ "Anos Iniciais",
+                                      nu_etapa %in% c(6, 7, 8, 9) ~ "Anos Finais"))
 }
 
 get_had <- function(path, ...) {
@@ -244,7 +247,10 @@ get_had <- function(path, ...) {
 
 .clean_icg <- function(icg) {
   vars <- c("NU_ANO_CENSO", "Ano")
-  ano <- icg %>% select(any_of(vars)) %>% distinct() %>% purrr::pluck(1, 1)
+  ano <- icg %>% select(any_of(vars)) %>% 
+    distinct() %>% 
+    purrr::pluck(1, 1)
+
   if (ano %in% c(2017, 2018)) {
     icg <- icg %>%
       rename(
@@ -477,11 +483,11 @@ get_ird <- function(path, ...) {
       starts_with("FUN_0")
     ) %>%
     pivot_longer(FUN_01_CAT_0:FUN_09_CAT_0, 
-                        names_to = "id_etapa",
+                        names_to = "nu_etapa",
                         values_to = "tdi") %>%
-    mutate(id_etapa = id_etapa %>% str_extract("\\d\\d") %>% as.numeric(),
-           nm_faixa_etapa = case_when(id_etapa %in% c(1, 2, 3, 4, 5) ~ "Anos Iniciais",
-                                      id_etapa %in% c(6, 7, 8, 9) ~ "Anos Finais"))
+    mutate(nu_etapa = nu_etapa %>% str_extract("\\d\\d") %>% as.numeric(),
+           nm_faixa_etapa = case_when(nu_etapa %in% c(1, 2, 3, 4, 5) ~ "Anos Iniciais",
+                                      nu_etapa %in% c(6, 7, 8, 9) ~ "Anos Finais"))
 }
 
 get_tdi <- function(path, ...) {
@@ -494,11 +500,11 @@ create_base_indicadores <- function(atu, had, icg, ideb, inse, ied, ird, tdi) {
   atu %>%
     #left_join(dsu %>% select(nu_ano, id_escola, nm_faixa_etapa)) %>%
     left_join(afd %>% select(nu_ano, id_escola, nm_faixa_etapa, afd)) %>%
-    left_join(had %>% select(nu_ano, id_escola, id_etapa, nm_faixa_etapa, had)) %>%
+    left_join(had %>% select(nu_ano, id_escola, nu_etapa, nm_faixa_etapa, had)) %>%
     left_join(icg %>% select(nu_ano, id_escola, icg)) %>%
     left_join(ideb %>% select(nu_ano, id_escola, nm_faixa_etapa, ideb)) %>%
     left_join(inse %>% select(nu_ano, id_escola, inse)) %>%
     left_join(ied %>% select(nu_ano, id_escola, nm_faixa_etapa, ied)) %>%
     left_join(ird %>% select(nu_ano, id_escola, ird)) %>%
-    left_join(tdi %>% select(nu_ano, id_escola, id_etapa, nm_faixa_etapa, tdi))
+    left_join(tdi %>% select(nu_ano, id_escola, nu_etapa, nm_faixa_etapa, tdi))
 }

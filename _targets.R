@@ -1,33 +1,21 @@
-# Created by use_targets().
-# Follow the comments below to fill in this target script.
-# Then follow the manual to check and run the pipeline:
-#   https://books.ropensci.org/targets/walkthrough.html#inspect-the-pipeline # nolint
-
-# Load packages required to define the pipeline:
 library(targets)
-# library(tarchetypes) # Load other packages as needed. # nolint
 
 # Set target options:
 tar_option_set(
   packages = c("readxl", "tidyr", "stringr", "dplyr", "magrittr"), # packages that your targets need to run
-  format = "rds" # default storage format
-  # Set other options as needed.
+  format = "rds"
 )
 
-# tar_make_clustermq() configuration (okay to leave alone):
+
 options(clustermq.scheduler = "multicore")
 
-# tar_make_future() configuration (okay to leave alone):
-# Install packages {{future}}, {{future.callr}}, and {{future.batchtools}} to allow use_targets() to configure tar_make_future() options.
-
-# Load the R scripts with your custom functions:
 source("./R/indicadores_inep.R")
 source("./R/coelba.R")
 source("./R/prosa.R")
+source("./R/censo.R")
+source("./R/enderecos_cep.R")
 source("./R/utils.R")
-# source("other_functions.R") # Source other scripts as needed. # nolint
 
-# Replace the target list below with your own:
 list(
   tar_target(
     afd_paths, 
@@ -90,7 +78,7 @@ list(
   tar_target(coelba_path, "./edu-covid-data/data/projeto_prosa/raw/coelba/Salvador_Cativo_2018 vs 2022.xlsx", format = "file"),
   tar_target(pop_path, "./edu-covid-data/data/projeto_prosa/raw/bairros/populacao_bairros_salvador.xlsx", format = "file"),
   tar_target(coelba, get_coelba(coelba_path, pop_path)),
-  tar_target(export_coelba_to_sql, export_to_sqlite("coelba", coelba)),
+  #tar_target(export_coelba_to_sql, export_to_sqlite("coelba", coelba)),
   tar_target(
     prosa_files,
     fs::dir_ls(
@@ -101,5 +89,13 @@ list(
     format = "file"
   ),
   tar_target(prosa, purrr::map_dfr(prosa_files, ~ get_prosa(.x))),
-  tar_target(export_prosa_to_sql, export_to_sqlite("prosa", prosa))
+  tar_target(path_censo, fs::dir_ls("./edu-covid-data/data/projeto_prosa/raw/censo", glob = "*.zip", recurse=TRUE), format = "file"),
+  tar_target(censo, map_dfr(path_censo, ~ read_escola_censo(.x)) %>% get_indice_de_infra_censo()),
+  tar_target(path_ceps, "./edu-covid-data/data/projeto_prosa/raw/enderecos/lista_de_ceps_salvador.csv", format = "file"),
+  tar_target(enderecos, get_enderecos(path_ceps)),
+  tar_target(path_matriculas, "./edu-covid-data/data/projeto_prosa/raw/matriculas/matriculados_1,6-9ano.xlsx", format = "file")
+  
+  
+  
+  #tar_target(export_prosa_to_sql, export_to_sqlite("prosa", prosa))
 )
