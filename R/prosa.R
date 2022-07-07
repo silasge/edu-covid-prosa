@@ -14,7 +14,6 @@ library(purrr)
   else if (is_latin1) prosa <- read_csv2(path, locale = locale(encoding = "latin1"))
   else if (is_excel) prosa <- read_excel(path)
   
-  is_2017 <- str_detect(path, "2017")
   is_2018 <- str_detect(path, "2018")
   is_2019_1av <- str_detect(path, "2019") & !str_detect(path, "2Av")
   is_2019_2av <- str_detect(path, "2019") & str_detect(path, "2Av")
@@ -24,9 +23,8 @@ library(purrr)
   is_mt <- str_detect(path, "MT")
   print(path)
   list(prosa = prosa %>% 
-         mutate(nu_ano = str_extract(path, "2017|2018|2019|2021") %>% as.numeric(),
+         mutate(nu_ano = str_extract(path, "2018|2019|2021") %>% as.numeric(),
                 nu_avaliacao = if_else(str_detect(path, "2Av"), 2, 1)),
-       is_2017 = is_2017, 
        is_2018 = is_2018,
        is_2019_1av = is_2019_1av,
        is_2019_2av = is_2019_2av, 
@@ -36,13 +34,7 @@ library(purrr)
 }
 
 .clean_prosa <- function(prosa_lst) {
-  if (prosa_lst$is_2017) {
-    prosa <- prosa_lst$prosa %>% drop_na(CD_ALUNO) %>% 
-      mutate(nm_sexo = NA_character_,
-             VL_PROFICIENCIA = VL_PROFICIENCIA / 1000, # TODO: divisão por 1000 só em 2017-1. corrigir para o 2017-2
-             nm_disciplina = case_when(prosa_lst$is_lp ~ "prosa_lp",
-                                       prosa_lst$is_mt ~ "prosa_mt")) 
-  } else if (prosa_lst$is_2018 | prosa_lst$is_2019_1av) {
+if (prosa_lst$is_2018 | prosa_lst$is_2019_1av) {
     prosa <- prosa_lst$prosa %>% 
       mutate(
         nm_sexo = NA_character_,

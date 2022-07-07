@@ -14,6 +14,7 @@ source("./R/coelba.R")
 source("./R/prosa.R")
 source("./R/censo.R")
 source("./R/enderecos_cep.R")
+source("./R/matriculas.R")
 source("./R/utils.R")
 
 list(
@@ -73,17 +74,14 @@ list(
   tar_target(ied, purrr::map_dfr(ied_paths, ~ get_ied(.x, id_municipio == 2927408))),
   tar_target(ird, purrr::map_dfr(ird_paths, ~ get_ird(.x, id_municipio == 2927408))),
   tar_target(tdi, purrr::map_dfr(tdi_paths, ~ get_tdi(.x, id_municipio == 2927408))),
-  #tar_target(base_indicadores, create_base_indicadores(afd, atu, had, icg, ideb, inse, ied, ird, tdi)),
-  #tar_target(export_indicadores_to_sql, export_to_sqlite("indicadores_inep", base_indicadores)),
-  tar_target(coelba_path, "./edu-covid-data/data/projeto_prosa/raw/coelba/Salvador_Cativo_2018 vs 2022.xlsx", format = "file"),
-  tar_target(pop_path, "./edu-covid-data/data/projeto_prosa/raw/bairros/populacao_bairros_salvador.xlsx", format = "file"),
-  tar_target(coelba, get_coelba(coelba_path, pop_path)),
-  #tar_target(export_coelba_to_sql, export_to_sqlite("coelba", coelba)),
+  tar_target(base_indicadores, base_inep_indicadores(atu, afd, had, icg, ideb, inse, ied, ird, tdi)),
+  #tar_target(coelba_path, "./edu-covid-data/data/projeto_prosa/raw/coelba/Salvador_Cativo_2018 vs 2022.xlsx", format = "file"),
+  #tar_target(pop_path, "./edu-covid-data/data/projeto_prosa/raw/bairros/populacao_bairros_salvador.xlsx", format = "file"),
+  #tar_target(coelba, get_coelba(coelba_path, pop_path)),
   tar_target(
     prosa_files,
     fs::dir_ls(
-      c("./edu-covid-data/data/projeto_prosa/raw/prosa/2017",
-        "./edu-covid-data/data/projeto_prosa/raw/prosa/2018",
+      c("./edu-covid-data/data/projeto_prosa/raw/prosa/2018",
         "./edu-covid-data/data/projeto_prosa/raw/prosa/2019",
         "./edu-covid-data/data/projeto_prosa/raw/prosa/2021")),
     format = "file"
@@ -93,8 +91,8 @@ list(
   tar_target(censo, map_dfr(path_censo, ~ read_escola_censo(.x)) %>% get_indice_de_infra_censo()),
   tar_target(path_ceps, "./edu-covid-data/data/projeto_prosa/raw/enderecos/lista_de_ceps_salvador.csv", format = "file"),
   tar_target(enderecos, get_enderecos(path_ceps)),
-  tar_target(path_matriculas, "./edu-covid-data/data/projeto_prosa/raw/matriculas/matriculados_1,6-9ano.xlsx", format = "file")
-  
+  tar_target(path_matriculas, "./edu-covid-data/data/projeto_prosa/raw/matriculas/matriculados_1,6-9ano.xlsx", format = "file"),
+  tar_target(matriculas, get_matriculas(path_matriculas, enderecos))
   
   
   #tar_target(export_prosa_to_sql, export_to_sqlite("prosa", prosa))

@@ -148,43 +148,6 @@ get_atu <- function(path, ...) {
   atu <- .read_atu(path) %>% .clean_atu() %>% filter(...)
 }
 
-# ---- DSU - Docentes com Ensino Superior ----
-
-.read_dsu <- function(path) {
-  read_excel(path, skip = 9, na = "--")
-}
-
-.clean_dsu <- function(dsu) {
-  dsu %>%
-    rename_with(
-      ~ case_when(
-        .x == "FUN_CAT0" ~ "FUN_CAT_0",
-        .x == "FUN_AI_CAT0" ~ "FUN_AI_CAT_0",
-        .x == "FUN_AF_CAT0" ~ "FUN_AF_CAT_0",
-        TRUE ~ .x
-      )
-    ) %>%
-    select(
-      nu_ano = NU_ANO_CENSO,
-      sg_uf = SG_UF,
-      id_municipio = CO_MUNICIPIO,
-      nm_municipio = NO_MUNICIPIO,
-      id_escola = CO_ENTIDADE,
-      nm_escola = NO_ENTIDADE,
-      nm_localizacao = NO_CATEGORIA,
-      nm_dependencia = NO_DEPENDENCIA,
-      `Total` = FUN_CAT_0,
-      `Anos Iniciais` = FUN_AI_CAT_0,
-      `Anos Finais` = FUN_AF_CAT_0
-    ) %>%
-    pivot_longer(cols = `Total`:`Anos Finais`,
-                        names_to = "nm_faixa_etapa",
-                        values_to = "dsu")
-}
-
-get_dsu <- function(path, ...) {
-  dsu <- .read_dsu(path) %>% .clean_dsu() %>% filter(...)
-}
 
 # ---- HAD - Horas Aula Diárias ----
 
@@ -496,15 +459,27 @@ get_tdi <- function(path, ...) {
 
 # ---- Base de Indicadores ----
 
-create_base_indicadores <- function(atu, had, icg, ideb, inse, ied, ird, tdi) {
-  atu %>%
-    #left_join(dsu %>% select(nu_ano, id_escola, nm_faixa_etapa)) %>%
-    left_join(afd %>% select(nu_ano, id_escola, nm_faixa_etapa, afd)) %>%
-    left_join(had %>% select(nu_ano, id_escola, nu_etapa, nm_faixa_etapa, had)) %>%
-    left_join(icg %>% select(nu_ano, id_escola, icg)) %>%
+base_inep_indicadores <- function(atu, afd, had, icg, ideb, inse, ied, ird, tdi) {
+  atu %>% select(nu_ano, id_escola, nm_escola, nu_etapa, nm_faixa_etapa, atu) %>%
+    left_join(afd %>% select(nu_ano, id_escola, contains("afd"))) %>%
+    left_join(had %>% select(nu_ano, id_escola, nu_etapa, nm_faixa_etapa, horas_aula= had)) %>%
+    left_join(icg %>% select(nu_ano, id_escola, complexidade_gestao = icg)) %>%
     left_join(ideb %>% select(nu_ano, id_escola, nm_faixa_etapa, ideb)) %>%
     left_join(inse %>% select(nu_ano, id_escola, inse)) %>%
-    left_join(ied %>% select(nu_ano, id_escola, nm_faixa_etapa, ied)) %>%
-    left_join(ird %>% select(nu_ano, id_escola, ird)) %>%
-    left_join(tdi %>% select(nu_ano, id_escola, nu_etapa, nm_faixa_etapa, tdi))
+    left_join(ied %>% select(nu_ano, id_escola, contains("ied"))) %>%
+    left_join(ird %>% select(nu_ano, id_escola, regularidade_docente = ird)) %>%
+    left_join(tdi %>% select(nu_ano, id_escola, nu_etapa, nm_faixa_etapa, tdi)) %>%
+    mutate(across(contains("_ai_"),
+                  ~ case_when(
+                    nm_faixa_etapa == "Anos Finais" ~ NA_real_,
+                    TRUE ~ .x / 100
+                  )),
+           across(contains("_af_"),
+                  ~ case_when(
+                    nm_faixa_etapa == "Anos Iniciais" ~ NA_real_,
+                    TRUE ~ .x / 100
+                  )),
+           complexidade_gestao = complexidade_gestao %>%
+             str_extract("\\d") %>%
+             as.numeric())
 }

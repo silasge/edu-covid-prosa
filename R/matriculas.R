@@ -13,7 +13,10 @@ library(purrr)
   read_excel(path) %>%
     clean_names() %>%
     mutate(across(where(is.character), ~ if_else(.x == "", NA_character_, .x)),
-           ano_esc = str_extract(ano_esc, "\\d") %>% as.numeric()) %>%
+           ano_esc = str_extract(ano_esc, "\\d") %>% as.numeric(),
+           matricula = matricula %>%
+             as.character() %>%
+             str_pad(width = 7, side = "left", pad = "0")) %>%
     rename(
       nu_ano = ano,
       nm_regional = gre,
@@ -58,30 +61,6 @@ library(purrr)
         (idade_aluno_mes3 >= (idade_adequada + 1)) & (ano_nascimento < ano_limite) ~ "Distorção"
       )
     )
-}
-
-.obter_vars_inep <- function(matriculados, afd, had, icg, ideb, ied, inse, ird) {
-  matriculados %>% 
-    left_join(had %>% distinct(nm_escola, id_escola)) %>% # obter id_inep pra cada escola
-    left_join(afd %>% mutate(across(contains("adeq_docente_"), ~ .x / 100))) %>%
-    left_join(had %>% mutate()) %>%
-    left_join(icg) %>%
-    left_join(ideb) %>%
-    left_join(ied %>% mutate(across(contains("esforco_docente_"), ~ .x / 100))) %>%
-    left_join(inse) %>%
-    left_join(ird) #%>%
-    #mutate(horas_aula = case_when(horas_aula == 4 ~ 1, horas_aula == 10 ~ 0),
-    #       prof_lic_mesma_area = adeq_docente_af_grp1,
-    #       prof_mesma_area = adeq_docente_af_grp1 + adeq_docente_af_grp2,
-    #       prof_lic_bach = adeq_docente_af_grp1 + adeq_docente_af_grp2 + adeq_docente_af_grp3,
-    #       esf_docente_nvls_1_a_3 = esforco_docente_af_nvl1 + esforco_docente_af_nvl2 + esforco_docente_af_nvl3,
-    #       esf_docente_nvls_1_a_4 = esforco_docente_af_nvl1 + esforco_docente_af_nvl2 + esforco_docente_af_nvl3 + esforco_docente_af_nvl4,
-    #       esf_docente_nvls_3_a_6 = esforco_docente_af_nvl3 + esforco_docente_af_nvl4 + esforco_docente_af_nvl5 + esforco_docente_af_nvl6)
-}
-
-.obter_censo_escola <- function(matriculados, censo_escola) {
-  matriculados %>%
-    left_join(censo_escola)
 }
 
 .criar_var_distancia <- function(matriculados, enderecos) {
@@ -141,53 +120,22 @@ library(purrr)
   matriculados %>% left_join(tam_turma)
 } 
 
-matriculas <- .read_matriculados("./edu-covid-data/data/projeto_prosa/raw/matriculas/matriculados_1,6-9ano.xlsx") %>%
-  .calc_situacao_matriculados() %>%
-  .obter_vars_inep(afd, had, icg, ideb, ied, inse, ird) %>%
-  .obter_censo_escola(censo) %>%
-  .criar_var_distancia(enderecos) %>%
-  .calc_tam_turma()
-
-matriculados <- matriculas %>%
-  left_join(prosa %>% 
-              filter(nu_ano != 2017) %>%
-              mutate(nm_disciplina = case_when(
-                nm_disciplina == "LÍNGUA PORTUGUESA" ~ "prosa_lp",
-                nm_disciplina == "MATEMÁTICA"
-              )) %>%
-              select(nu_ano, id_matricula, id_escola, vl_proficiencia))
-
-get_matriculas <- function(path_matriculas, afd, had, icg, ideb, ied, inse, ird, censo_escola, enderecos, anos_esc) {
+get_matriculas <- function(path_matriculas, enderecos) {
   .read_matriculados(path_matriculas) %>%
     .calc_situacao_matriculados() %>%
-    .obter_vars_inep(afd, had, icg, ideb, ied, inse, ird) %>%
-    .obter_censo_escola(censo_escola) %>%
     .criar_var_distancia(enderecos) %>%
     .criar_dummies() %>%
     .calc_tam_turma() %>%
-    filter(ano_esc %in% anos_esc) %>%
     select(
-      ano, 
-      gre,
-      escola,
-      id_inep,
-      ano_esc,
-      idade,
-      diff_idade_adequada,
+      nu_ano, 
+      nm_regional,
+      nm_escola,
+      id_matricula,
+      nu_etapa,
+      nu_idade,
       situacao,
-      situacao_final_matricula = situacao_final,
       tam_turma,
       porc_turma_em_dist,
-      contains("prof_"),
-      contains("adeq_docente_"),
-      horas_aula,
-      complexidade_gestao,
-      ideb,
-      contains("esf_docente_"),
-      contains("esforco_docente_"),
-      inse,
-      regularidade_docente,
-      score_infra,
       distancia,
       masculino,
       negro,
@@ -195,97 +143,19 @@ get_matriculas <- function(path_matriculas, afd, had, icg, ideb, ied, inse, ird,
       vespertino,
       integral,
       ate_fundamental_resp,
-      lati_escola,
-      long_escola
+      distancia
     )
 }
 
 
-get_grouped_matriculas <- function(banco_matriculas){
-  grp_ano_esc <- banco_matriculas %>%
-    group_by(ano, gre, id_inep, escola, ano_esc) %>%
-    summarise(
-      n_alunos = n(),
-      n_alunos_em_dist = sum(situacao == "Distorção", na.rm = TRUE),
-      taxa_dist = mean(situacao == "Distorção", na.rm = TRUE),
-      across(c(idade:diff_idade_adequada, 
-               tam_turma:porc_turma_em_dist,
-               contains("prof_"),
-               contains("adeq_docente_"),
-               horas_aula:ideb,
-               contains("esf_docente_"),
-               contains("esforco_docente_"),
-               inse:long_escola), ~ mean(.x, na.rm = TRUE))
-    )
-  
-  grp_anos_finais <- banco_matriculas %>%
-    group_by(ano, gre, id_inep, escola) %>%
-    summarise(
-      n_alunos = n(),
-      n_alunos_em_dist = sum(situacao == "Distorção", na.rm = TRUE),
-      taxa_dist = mean(situacao == "Distorção", na.rm = TRUE),
-      across(c(idade:diff_idade_adequada, 
-               tam_turma:porc_turma_em_dist,
-               contains("prof_"),
-               contains("adeq_docente_"),
-               horas_aula:ideb,
-               contains("esf_docente_"),
-               contains("esforco_docente_"),
-               inse:long_escola), ~ mean(.x, na.rm = TRUE))
-    ) %>%
-    mutate(ano_esc = "Anos Finais")
-  
-  matriculas_grp <- bind_rows(grp_ano_esc, grp_anos_finais)
-  
-  matric_tx_meninas <- banco_matriculas %>%
-    filter(masculino == 0) %>%
-    group_by(id_inep, escola, ano_esc) %>%
-    summarise(
-      tx_dist_meninas = mean(situacao == "Distorção", na.rm = TRUE)
-    ) %>%
-    bind_rows(banco_matriculas %>%
-                filter(masculino == 0) %>%
-                group_by(id_inep, escola) %>%
-                summarise(
-                  tx_dist_meninas = mean(situacao == "Distorção", na.rm = TRUE)) %>%
-                mutate(ano_esc = "Anos Finais"))
-  
-  matric_tx_pd <- banco_matriculas %>%
-    filter(necessidade_especial == 1) %>%
-    group_by(id_inep, escola, ano_esc) %>%
-    summarise(
-      tx_dist_pd = mean(situacao == "Distorção", na.rm = TRUE)
-    ) %>%
-    bind_rows(
-      banco_matriculas %>%
-        filter(necessidade_especial == 1) %>%
-        group_by(id_inep, escola) %>%
-        summarise(
-          tx_dist_pd = mean(situacao == "Distorção", na.rm = TRUE)
-        ) %>%
-        mutate(ano_esc = "Anos Finais")
-    )
-  
-  matric_td_15anos <- banco_matriculas %>%
-    filter(situacao == "Distorção") %>%
-    group_by(id_inep, escola, ano_esc) %>%
-    summarise(
-      tx_dist_idade = mean(idade >= 15, na.rm = TRUE)
-    ) %>%
-    bind_rows(
-      banco_matriculas %>%
-        filter(situacao == "Distorção") %>%
-        group_by(id_inep, escola) %>%
-        summarise(
-          tx_dist_idade = mean(idade >= 15, na.rm = TRUE)
-        ) %>%
-        mutate(ano_esc = "Anos Finais")
-    )
-  
-  matriculas_grp %>%
-    left_join(matric_tx_meninas) %>%
-    left_join(matric_td_15anos) %>%
-    left_join(matric_tx_pd)
-}
+teste <- matriculas %>%
+  left_join(base_indicadores %>% distinct(id_escola, nm_escola)) %>%
+  left_join(base_indicadores) %>%
+  left_join(censo)
 
+prosa_piv <- prosa %>%
+  pivot_wider(names_from = nm_disciplina, values_from = vl_proficiencia)
 
+teste2 <- teste %>%
+  left_join(prosa %>%
+              )
